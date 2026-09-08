@@ -79,4 +79,45 @@ describe('Phonetic Search Integration', () => {
     expect(result.results.length).toBeGreaterThan(0);
     expect(result.results[0].gid).toBe(1);
   });
+
+  // Issue #100: phrase-level phonetic entries must resolve to verses
+  // that actually contain the Arabic phrase (not merely non-empty).
+  const stripDiacritics = (text: string) =>
+    text
+      .replace(/\u0671/g, '\u0627')
+      .replace(/\u0670/g, '\u0627')
+      .replace(/[\u064b-\u065f\u06d6-\u06ed\u0640]/g, '');
+
+  it.each([
+    ['bismillah', 'بسم الله', 1],
+    ['alhamdulillah', 'الحمد لله', 2],
+    ['subhanallah', 'سبحان الله', undefined],
+  ])('should resolve "%s" to verses containing "%s"', async (query, phrase, expectedGid) => {
+    if (!mockQuranData) mockQuranData = await loadQuranData();
+    if (!mockMorphologyMap) mockMorphologyMap = await loadMorphology();
+    if (!mockWordMap) mockWordMap = await loadWordMap();
+    if (!mockPhoneticMap) mockPhoneticMap = buildPhoneticMap();
+
+    expect(mockPhoneticMap.get(query)).toContain(phrase);
+    const result = search(query, {
+      quranData: mockQuranData,
+      morphologyMap: mockMorphologyMap,
+      wordMap: mockWordMap,
+      phoneticMap: mockPhoneticMap,
+    });
+    expect(result.results.length).toBeGreaterThan(0);
+    const top = result.results[0];
+    const normTop = stripDiacritics(top.uthmani);
+    const normPhrase = stripDiacritics(phrase);
+    if (expectedGid !== undefined) {
+      // Documented exact-phrase queries rank the verse first.
+      expect(top.gid).toBe(expectedGid);
+      expect(normTop).toContain(normPhrase);
+    } else {
+      // OR-ranked queries: the exact phrase must appear in results.
+      expect(result.results.some((r) => stripDiacritics(r.uthmani).includes(normPhrase))).toBe(
+        true,
+      );
+    }
+  });
 });
