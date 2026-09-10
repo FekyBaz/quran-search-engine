@@ -194,6 +194,7 @@ describe('parseArgs', () => {
 
     it.each([
       ['--semantic', 'semantic'],
+      ['--subject', 'subject'],
       ['--regex', 'isRegex'],
     ] as const)('%s turns on %s', (flag, key) => {
       expect(parseOk(['رحم', flag]).options[key]).toBe(true);
@@ -300,7 +301,7 @@ describe('parseArgs', () => {
   });
 
   describe('regex warnings', () => {
-    it.each(['--lemma', '--root', '--fuzzy', '--semantic'])(
+    it.each(['--lemma', '--root', '--fuzzy', '--semantic', '--subject'])(
       'warns that %s has no effect with --regex',
       (flag) => {
         const parsed = parseOk(['رحم', '--regex', flag]);

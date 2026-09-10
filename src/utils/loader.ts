@@ -297,33 +297,47 @@ export const buildInvertedIndex = (
   }
 
   // Build subjectIndex based on the computed wordIndex.
-  // Theme words are lemmas, but verses carry surface forms — most often with
-  // the definite article (رياح vs الرياح). The linear fallback matches those
-  // via substring; probe the ال-prefixed form too so the index path keeps the
-  // same recall.
   if (subjectMap && subjectIndex) {
-    for (const [key, node] of subjectMap.entries()) {
-      const gids = new Set<number>();
-      for (const word of node.arabic) {
-        const normalized = normalizeArabic(word);
-        const matches =
-          wordIndex.get(word) ||
-          wordIndex.get(normalized) ||
-          wordIndex.get(`ال${word}`) ||
-          wordIndex.get(`ال${normalized}`);
-        if (matches) {
-          for (const gid of matches) {
-            gids.add(gid);
-          }
-        }
-      }
-      if (gids.size > 0) {
-        subjectIndex.set(key, gids);
-      }
-    }
+    buildSubjectIndex(wordIndex, subjectMap, subjectIndex);
   }
 
   return { lemmaIndex, rootIndex, wordIndex, semanticIndex, subjectIndex };
+};
+
+/**
+ * Maps every subject key to the verses carrying its theme words. Theme words
+ * are lemmas, but verses carry surface forms — most often with the definite
+ * article (رياح vs الرياح). The linear fallback matches those via substring;
+ * probing the ال-prefixed form too keeps the index path at the same recall.
+ */
+const buildSubjectIndex = (
+  wordIndex: Map<string, Set<number>>,
+  subjectMap: Map<string, SubjectNode>,
+  subjectIndex: Map<string, Set<number>>,
+): void => {
+  const findGids = (word: string): Set<number> | undefined => {
+    const normalized = normalizeArabic(word);
+    return (
+      wordIndex.get(word) ||
+      wordIndex.get(normalized) ||
+      wordIndex.get(`ال${word}`) ||
+      wordIndex.get(`ال${normalized}`)
+    );
+  };
+  for (const [key, node] of subjectMap.entries()) {
+    const gids = new Set<number>();
+    for (const word of node.arabic) {
+      const matches = findGids(word);
+      if (matches) {
+        for (const gid of matches) {
+          gids.add(gid);
+        }
+      }
+    }
+    if (gids.size > 0) {
+      subjectIndex.set(key, gids);
+    }
+  }
 };
 
 export const loadSemanticData = async (): Promise<Map<string, string[]>> => {
@@ -398,6 +412,15 @@ interface SubjectConcept {
   notes?: string;
 }
 
+const assertSubjectConcept = (concept: SubjectConcept, filePath: string, index: number): void => {
+  if (!Array.isArray(concept.english) || !Array.isArray(concept.arabic)) {
+    throw new DataSchemaInvalidError(
+      filePath,
+      `Subject at index ${index} must have english and arabic string arrays`,
+    );
+  }
+};
+
 const buildSubjectMap = (subjectData: SubjectConcept[]): Map<string, SubjectNode> => {
   const map = new Map<string, SubjectNode>();
   for (const concept of subjectData) {
@@ -436,12 +459,7 @@ export const loadSubjectData = async (): Promise<Map<string, SubjectNode>> => {
     }
 
     for (const [index, concept] of subjectData.entries()) {
-      if (!Array.isArray(concept.english) || !Array.isArray(concept.arabic)) {
-        throw new DataSchemaInvalidError(
-          filePath,
-          `Subject at index ${index} must have english and arabic string arrays`,
-        );
-      }
+      assertSubjectConcept(concept, filePath, index);
     }
 
     return buildSubjectMap(subjectData);
