@@ -823,6 +823,9 @@ const response = search(
 // response.results => all returned verses match BOTH tokens (AND logic)
 ```
 
+For independent multi-term search with score/coverage/frequency ranking, subject (thematic) search, and an AI-pipeline
+worked example, see the [Subject & Multi-Word Search guide](./docs/guides/subjects-and-multiword.md).
+
 ## Caching with LRUCache
 
 `quran-search-engine` ships a generic `LRUCache<K, V>` class that you can pass into `search()` to avoid recomputing
