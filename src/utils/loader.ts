@@ -450,42 +450,45 @@ export const loadSubjectData = async (): Promise<Map<string, SubjectNode>> => {
     const subjectModule = await import('../data/subjects.json');
     const subjectData = (subjectModule.default || subjectModule) as SubjectConcept[];
 
-    if (!Array.isArray(subjectData)) {
-      throw new DataSchemaInvalidError(filePath, 'Expected an array of subject data');
-    }
-
-    if (subjectData.length === 0) {
-      throw new DataSchemaInvalidError(filePath, 'Subject data is empty');
-    }
-
+    assertSubjectArray(subjectData, filePath);
     for (const [index, concept] of subjectData.entries()) {
       assertSubjectConcept(concept, filePath, index);
     }
 
     return buildSubjectMap(subjectData);
   } catch (error) {
-    if (
-      error instanceof DataFileNotFoundError ||
-      error instanceof DataParseError ||
-      error instanceof DataSchemaInvalidError
-    ) {
-      throw error;
-    }
-
-    if (error instanceof Error) {
-      if (
-        error.message.includes('Cannot find module') ||
-        error.message.includes('Failed to fetch')
-      ) {
-        throw new DataFileNotFoundError(filePath, error);
-      }
-      if (error.message.includes('JSON') || error.message.includes('parse')) {
-        throw new DataParseError(filePath, error);
-      }
-    }
-
-    throw new DataParseError(filePath, error);
+    throwMappedImportError(filePath, error);
   }
+};
+
+/** Narrows an imported JSON payload to a non-empty concept array. */
+const assertSubjectArray = (data: unknown, filePath: string): asserts data is SubjectConcept[] => {
+  if (!Array.isArray(data)) {
+    throw new DataSchemaInvalidError(filePath, 'Expected an array of subject data');
+  }
+  if (data.length === 0) {
+    throw new DataSchemaInvalidError(filePath, 'Subject data is empty');
+  }
+};
+
+/** Re-maps unexpected import failures to the typed data errors. */
+const throwMappedImportError = (filePath: string, error: unknown): never => {
+  if (
+    error instanceof DataFileNotFoundError ||
+    error instanceof DataParseError ||
+    error instanceof DataSchemaInvalidError
+  ) {
+    throw error;
+  }
+  if (error instanceof Error) {
+    if (error.message.includes('Cannot find module') || error.message.includes('Failed to fetch')) {
+      throw new DataFileNotFoundError(filePath, error);
+    }
+    if (error.message.includes('JSON') || error.message.includes('parse')) {
+      throw new DataParseError(filePath, error);
+    }
+  }
+  throw new DataParseError(filePath, error);
 };
 
 type PhoneticDictionary = Record<string, string[]>;

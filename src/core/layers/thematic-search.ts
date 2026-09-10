@@ -140,15 +140,12 @@ const verifyIndexedVerse = <TVerse extends VerseInput>(
   return matchedKeywords.length > 0 ? toThematicHit(verse, matchType, matchedKeywords) : null;
 };
 
-/** Scores one verse by linear scan (no usable index). */
-const scanVerse = <TVerse extends VerseInput>(
+/** Collects every theme keyword a verse contains (linear scan, no index). */
+const collectScanKeywords = <TVerse extends VerseInput>(
   verse: TVerse,
-  matchType: ScoredVerse<TVerse>['matchType'],
   resolved: ResolvedThematicQuery,
   source: ThematicSource,
-  options: AdvancedSearchOptions,
-): ScoredVerse<TVerse> | null => {
-  if (!passesScopeFilter(verse, options)) return null;
+): string[] => {
   const normalizedVerse = normalizeArabic(verse.standard);
   const matchedKeywords: string[] = [];
 
@@ -169,7 +166,19 @@ const scanVerse = <TVerse extends VerseInput>(
       matchedKeywords.push(themeWord);
     }
   }
+  return matchedKeywords;
+};
 
+/** Scores one verse by linear scan (no usable index). */
+const scanVerse = <TVerse extends VerseInput>(
+  verse: TVerse,
+  matchType: ScoredVerse<TVerse>['matchType'],
+  resolved: ResolvedThematicQuery,
+  source: ThematicSource,
+  options: AdvancedSearchOptions,
+): ScoredVerse<TVerse> | null => {
+  if (!passesScopeFilter(verse, options)) return null;
+  const matchedKeywords = collectScanKeywords(verse, resolved, source);
   return matchedKeywords.length > 0 ? toThematicHit(verse, matchType, matchedKeywords) : null;
 };
 
