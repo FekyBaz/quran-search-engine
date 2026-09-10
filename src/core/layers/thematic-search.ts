@@ -1,5 +1,5 @@
 import { normalizeArabic, isArabic } from '../../utils/normalization';
-import type { VerseInput, ScoredVerse, AdvancedSearchOptions } from '../../types';
+import type { VerseInput, ScoredVerse, AdvancedSearchOptions, MatchType } from '../../types';
 
 /**
  * Shared engine for theme-expansion search layers (semantic synonyms and
@@ -85,7 +85,7 @@ const passesScopeFilter = <TVerse extends VerseInput>(
 
 const toThematicHit = <TVerse extends VerseInput>(
   verse: TVerse,
-  matchType: ScoredVerse<TVerse>['matchType'],
+  matchType: MatchType,
   matchedKeywords: string[],
 ): ScoredVerse<TVerse> => ({
   ...verse,
@@ -128,7 +128,7 @@ const verseContains = (normalizedVerse: string, word: string): boolean =>
 /** Verifies one indexed candidate against the verse text. */
 const verifyIndexedVerse = <TVerse extends VerseInput>(
   verse: TVerse,
-  matchType: ScoredVerse<TVerse>['matchType'],
+  matchType: MatchType,
   arabicWords: Set<string>,
   options: AdvancedSearchOptions,
 ): ScoredVerse<TVerse> | null => {
@@ -172,7 +172,7 @@ const collectScanKeywords = <TVerse extends VerseInput>(
 /** Scores one verse by linear scan (no usable index). */
 const scanVerse = <TVerse extends VerseInput>(
   verse: TVerse,
-  matchType: ScoredVerse<TVerse>['matchType'],
+  matchType: MatchType,
   resolved: ResolvedThematicQuery,
   source: ThematicSource,
   options: AdvancedSearchOptions,

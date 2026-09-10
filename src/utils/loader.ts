@@ -450,29 +450,28 @@ export const loadSubjectData = async (): Promise<Map<string, SubjectNode>> => {
     const subjectModule = await import('../data/subjects.json');
     const subjectData = (subjectModule.default || subjectModule) as SubjectConcept[];
 
-    assertSubjectArray(subjectData, filePath);
-    for (const [index, concept] of subjectData.entries()) {
-      assertSubjectConcept(concept, filePath, index);
-    }
+    requireSubjectConcepts(subjectData, filePath);
 
     return buildSubjectMap(subjectData);
   } catch (error) {
-    throwMappedImportError(filePath, error);
+    throw toImportError(filePath, error);
   }
 };
 
-/** Narrows an imported JSON payload to a non-empty concept array. */
-const assertSubjectArray = (data: unknown, filePath: string): asserts data is SubjectConcept[] => {
+/** Narrows an imported JSON payload to a validated, non-empty concept array. */
+const requireSubjectConcepts = (data: unknown, filePath: string): SubjectConcept[] => {
   if (!Array.isArray(data)) {
     throw new DataSchemaInvalidError(filePath, 'Expected an array of subject data');
   }
   if (data.length === 0) {
     throw new DataSchemaInvalidError(filePath, 'Subject data is empty');
   }
+  data.forEach((concept, index) => assertSubjectConcept(concept, filePath, index));
+  return data as SubjectConcept[];
 };
 
 /** Re-maps unexpected import failures to the typed data errors. */
-const throwMappedImportError = (filePath: string, error: unknown): never => {
+const toImportError = (filePath: string, error: unknown): Error => {
   if (
     error instanceof DataFileNotFoundError ||
     error instanceof DataParseError ||
