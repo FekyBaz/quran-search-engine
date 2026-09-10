@@ -5,12 +5,20 @@ import {
   loadMorphology,
   loadWordMap,
   loadSemanticData,
+  loadSubjectData,
   loadPhoneticData,
   buildInvertedIndex,
 } from '../utils/loader';
 import { search } from '../core/search';
 import { LRUCache } from '../utils/lru-cache';
-import type { QuranText, MorphologyAya, WordMap, SearchResponse, InvertedIndex } from '../types';
+import type {
+  QuranText,
+  MorphologyAya,
+  WordMap,
+  SearchResponse,
+  InvertedIndex,
+  SubjectNode,
+} from '../types';
 import type {
   WorkerRequest,
   InitDataResponse,
@@ -25,6 +33,7 @@ let quranData: Map<number, QuranText> | null = null;
 let morphologyMap: Map<number, MorphologyAya> | null = null;
 let wordMap: WordMap | null = null;
 let semanticMap: Map<string, string[]> | null = null;
+let subjectMap: Map<string, SubjectNode> | null = null;
 let phoneticMap: Map<string, string[]> | null = null;
 let invertedIndex: InvertedIndex | null = null;
 const cache = new LRUCache<string, SearchResponse<QuranText>>(100);
@@ -49,11 +58,12 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   switch (msg.type) {
     case 'INIT_DATA': {
       try {
-        const [qd, morph, wm, semMap, phonMap] = await Promise.all([
+        const [qd, morph, wm, semMap, subjMap, phonMap] = await Promise.all([
           loadQuranData(),
           loadMorphology(),
           loadWordMap(),
           loadSemanticData().catch(() => null),
+          loadSubjectData().catch(() => null),
           loadPhoneticData().catch(() => null),
         ]);
 
@@ -61,8 +71,14 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         morphologyMap = morph;
         wordMap = wm;
         semanticMap = semMap;
+        subjectMap = subjMap;
         phoneticMap = phonMap;
-        invertedIndex = buildInvertedIndex(morphologyMap, quranData, semanticMap ?? undefined);
+        invertedIndex = buildInvertedIndex(
+          morphologyMap,
+          quranData,
+          semanticMap ?? undefined,
+          subjectMap ?? undefined,
+        );
 
         postTyped({
           type: 'INIT_DATA_RESULT',
@@ -101,6 +117,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             wordMap,
             invertedIndex: invertedIndex ?? undefined,
             semanticMap: semanticMap ?? undefined,
+            subjectMap: subjectMap ?? undefined,
             phoneticMap: phoneticMap ?? undefined,
           },
           msg.options,
@@ -147,6 +164,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             wordMap,
             invertedIndex: invertedIndex ?? undefined,
             semanticMap: semanticMap ?? undefined,
+            subjectMap: subjectMap ?? undefined,
             phoneticMap: phoneticMap ?? undefined,
           },
           msg.options,
@@ -177,6 +195,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       morphologyMap = null;
       wordMap = null;
       semanticMap = null;
+      subjectMap = null;
       phoneticMap = null;
       invertedIndex = null;
       self.close();

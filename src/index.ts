@@ -6,6 +6,7 @@ export {
   loadWordMap,
   buildInvertedIndex,
   loadSemanticData,
+  loadSubjectData,
   loadPhoneticData,
 } from './utils/loader';
 export { normalizeArabic, removeTashkeel, isArabic } from './utils/normalization';

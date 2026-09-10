@@ -1,4 +1,4 @@
-import type { MorphologyAya, WordMap, QuranText, InvertedIndex } from '../types';
+import type { MorphologyAya, WordMap, QuranText, InvertedIndex, SubjectNode } from '../types';
 import { normalizeArabic } from './normalization';
 import { DataFileNotFoundError, DataParseError, DataSchemaInvalidError } from '../errors';
 
@@ -227,11 +227,13 @@ export const buildInvertedIndex = (
   morphologyMap: Map<number, MorphologyAya>,
   quranData: Map<number, QuranText>,
   semanticMap?: Map<string, string[]>,
+  subjectMap?: Map<string, SubjectNode>,
 ): InvertedIndex => {
   const lemmaIndex = new Map<string, Set<number>>();
   const rootIndex = new Map<string, Set<number>>();
   const wordIndex = new Map<string, Set<number>>();
   const semanticIndex = semanticMap ? new Map<string, Set<number>>() : undefined;
+  const subjectIndex = subjectMap ? new Map<string, Set<number>>() : undefined;
 
   for (const morph of morphologyMap.values()) {
     const gid = morph.gid;
@@ -294,7 +296,34 @@ export const buildInvertedIndex = (
     }
   }
 
-  return { lemmaIndex, rootIndex, wordIndex, semanticIndex };
+  // Build subjectIndex based on the computed wordIndex.
+  // Theme words are lemmas, but verses carry surface forms — most often with
+  // the definite article (رياح vs الرياح). The linear fallback matches those
+  // via substring; probe the ال-prefixed form too so the index path keeps the
+  // same recall.
+  if (subjectMap && subjectIndex) {
+    for (const [key, node] of subjectMap.entries()) {
+      const gids = new Set<number>();
+      for (const word of node.arabic) {
+        const normalized = normalizeArabic(word);
+        const matches =
+          wordIndex.get(word) ||
+          wordIndex.get(normalized) ||
+          wordIndex.get(`ال${word}`) ||
+          wordIndex.get(`ال${normalized}`);
+        if (matches) {
+          for (const gid of matches) {
+            gids.add(gid);
+          }
+        }
+      }
+      if (gids.size > 0) {
+        subjectIndex.set(key, gids);
+      }
+    }
+  }
+
+  return { lemmaIndex, rootIndex, wordIndex, semanticIndex, subjectIndex };
 };
 
 export const loadSemanticData = async (): Promise<Map<string, string[]>> => {
@@ -360,6 +389,85 @@ const buildSemanticMap = (semanticData: SemanticConcept[]): Map<string, string[]
     }
   }
   return map;
+};
+
+interface SubjectConcept {
+  english: string[];
+  arabic: string[];
+  category?: string;
+  notes?: string;
+}
+
+const buildSubjectMap = (subjectData: SubjectConcept[]): Map<string, SubjectNode> => {
+  const map = new Map<string, SubjectNode>();
+  for (const concept of subjectData) {
+    const node: SubjectNode = {
+      arabic: concept.arabic,
+      english: concept.english,
+      category: concept.category,
+    };
+    for (const word of concept.arabic) {
+      const cleanWord = normalizeArabic(word);
+      if (cleanWord) {
+        map.set(cleanWord, node);
+      }
+    }
+    for (const engWord of concept.english) {
+      const cleanWord = engWord.replace(/[^a-zA-Z\s]/g, '').trim();
+      map.set(cleanWord.toLowerCase(), node);
+    }
+  }
+  return map;
+};
+
+export const loadSubjectData = async (): Promise<Map<string, SubjectNode>> => {
+  const filePath = '../data/subjects.json';
+
+  try {
+    const subjectModule = await import('../data/subjects.json');
+    const subjectData = (subjectModule.default || subjectModule) as SubjectConcept[];
+
+    if (!Array.isArray(subjectData)) {
+      throw new DataSchemaInvalidError(filePath, 'Expected an array of subject data');
+    }
+
+    if (subjectData.length === 0) {
+      throw new DataSchemaInvalidError(filePath, 'Subject data is empty');
+    }
+
+    for (const [index, concept] of subjectData.entries()) {
+      if (!Array.isArray(concept.english) || !Array.isArray(concept.arabic)) {
+        throw new DataSchemaInvalidError(
+          filePath,
+          `Subject at index ${index} must have english and arabic string arrays`,
+        );
+      }
+    }
+
+    return buildSubjectMap(subjectData);
+  } catch (error) {
+    if (
+      error instanceof DataFileNotFoundError ||
+      error instanceof DataParseError ||
+      error instanceof DataSchemaInvalidError
+    ) {
+      throw error;
+    }
+
+    if (error instanceof Error) {
+      if (
+        error.message.includes('Cannot find module') ||
+        error.message.includes('Failed to fetch')
+      ) {
+        throw new DataFileNotFoundError(filePath, error);
+      }
+      if (error.message.includes('JSON') || error.message.includes('parse')) {
+        throw new DataParseError(filePath, error);
+      }
+    }
+
+    throw new DataParseError(filePath, error);
+  }
 };
 
 type PhoneticDictionary = Record<string, string[]>;

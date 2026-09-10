@@ -8,6 +8,7 @@ import type {
   SearchContext,
   SearchCounts,
   SearchResponse,
+  SubjectNode,
   WordMap,
 } from '../types';
 import {
@@ -15,6 +16,7 @@ import {
   loadPhoneticData,
   loadQuranData,
   loadSemanticData,
+  loadSubjectData,
   loadWordMap,
 } from '../utils/loader';
 import { isArabic } from '../utils/normalization';
@@ -40,6 +42,7 @@ export type CliDeps = {
   loadMorphology?: () => Promise<Map<number, MorphologyAya>>;
   loadWordMap?: () => Promise<WordMap>;
   loadSemanticData?: () => Promise<Map<string, string[]>>;
+  loadSubjectData?: () => Promise<Map<string, SubjectNode>>;
   loadPhoneticData?: () => Promise<Map<string, string[]>>;
   writeFile?: (path: string, contents: string) => Promise<void>;
   version?: string;
@@ -98,6 +101,7 @@ const NO_COUNTS: SearchCounts = {
   fuzzy: 0,
   range: 0,
   semantic: 0,
+  subject: 0,
   regex: 0,
   total: 0,
 };
@@ -177,9 +181,12 @@ export const run = async (argv: string[], io: CliIo, deps: CliDeps = {}): Promis
     ]);
 
     // Load the optional datasets only when this query can actually use them: semantic
-    // data under --semantic, phonetic data only for non-Arabic input.
+    // data under --semantic, subject data under --subject, phonetic data only
+    // for non-Arabic input.
     const semanticMap =
       options.semantic === true ? await (deps.loadSemanticData ?? loadSemanticData)() : undefined;
+    const subjectMap =
+      options.subject === true ? await (deps.loadSubjectData ?? loadSubjectData)() : undefined;
     const phoneticMap = isArabic(queryText)
       ? undefined
       : await (deps.loadPhoneticData ?? loadPhoneticData)();
@@ -189,6 +196,7 @@ export const run = async (argv: string[], io: CliIo, deps: CliDeps = {}): Promis
       morphologyMap,
       wordMap,
       semanticMap,
+      subjectMap,
       phoneticMap,
     };
   } catch (error) {

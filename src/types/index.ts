@@ -45,12 +45,25 @@ export type WordMap = Map<
   }
 >;
 
+/**
+ * A thematic subject node: a group of related Arabic lemmas/words plus the
+ * English keywords that address it. Unlike the flat synonym list in
+ * semantic.json, a subject connects a theme (weather, worship, …) whose
+ * members are topically related rather than synonymous.
+ */
+export type SubjectNode = {
+  arabic: string[];
+  english: string[];
+  category?: string;
+};
+
 export type SearchContext<TVerse extends VerseInput = QuranText> = {
   quranData: Map<number, TVerse>;
   morphologyMap: Map<number, MorphologyAya>;
   wordMap: WordMap;
   invertedIndex?: InvertedIndex;
   semanticMap?: Map<string, string[]>;
+  subjectMap?: Map<string, SubjectNode>;
   phoneticMap?: Map<string, string[]>;
 };
 
@@ -62,6 +75,7 @@ export type MatchType =
   | 'range'
   | 'none'
   | 'semantic'
+  | 'subject'
   | 'regex';
 
 export type ScoredVerse<TVerse extends VerseInput = QuranText> = TVerse & {
@@ -84,6 +98,7 @@ export type AdvancedSearchOptions = {
   sura_name_en?: string;
   sura_name_romanization?: string;
   semantic?: boolean;
+  subject?: boolean;
 };
 
 export type SearchOptions = AdvancedSearchOptions;
@@ -104,6 +119,7 @@ export type SearchCounts = {
   fuzzy: number;
   range: number;
   semantic: number;
+  subject: number;
   regex: number;
   total: number;
 };
@@ -202,6 +218,7 @@ export type InvertedIndex = {
   rootIndex: RootIndex;
   wordIndex: WordIndex;
   semanticIndex?: Map<string, Set<number>>;
+  subjectIndex?: Map<string, Set<number>>;
 };
 
 /** Boolean query object for booleanSearch() **/

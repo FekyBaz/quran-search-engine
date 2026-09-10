@@ -47,7 +47,7 @@ const SURA_COUNT = 114;
 const JUZ_COUNT = 30;
 
 /** Options the regex layer ignores; combining them with `--regex` earns a warning. */
-const REGEX_IGNORED_FLAGS = ['--lemma', '--root', '--fuzzy', '--semantic'] as const;
+const REGEX_IGNORED_FLAGS = ['--lemma', '--root', '--fuzzy', '--semantic', '--subject'] as const;
 
 /** Narrows a parse result to the error case. */
 export const isUsageError = (result: CliOptions | CliUsageError): result is CliUsageError =>
@@ -108,6 +108,7 @@ export const parseArgs = (argv: string[]): CliOptions | CliUsageError => {
     root: true,
     fuzzy: true,
     semantic: false,
+    subject: false,
     isRegex: false,
   };
   const pagination: MultiTermOptions = { page: 1, limit: 20, rankBy: 'score' };
@@ -170,6 +171,9 @@ export const parseArgs = (argv: string[]): CliOptions | CliUsageError => {
         break;
       case '--semantic':
         options.semantic = true;
+        break;
+      case '--subject':
+        options.subject = true;
         break;
       case '--regex':
         options.isRegex = true;

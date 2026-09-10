@@ -1,0 +1,27 @@
+[
+  {
+    "english": ["weather", "climate", "rain", "rainfall", "wind", "winds", "storm", "storms", "cloud", "clouds", "thunder", "lightning", "thunderbolt", "sky", "shower"],
+    "arabic": ["مطر", "أمطار", "غيث", "ودق", "ريح", "رياح", "عاصف", "عاصفة", "عواصف", "إعصار", "سحاب", "غمام", "غيم", "رعد", "برق", "صواعق", "صاعقة", "سماء"],
+    "category": "weather"
+  },
+  {
+    "english": ["worship", "prayer", "prayers", "fasting", "charity", "pilgrimage", "mosque", "mosques", "prostration", "bowing"],
+    "arabic": ["عبادة", "صلاة", "صلوات", "زكاة", "صيام", "صوم", "حج", "عمرة", "مسجد", "مساجد", "ركوع", "سجود", "سجدة", "تقوى", "ذكر"],
+    "category": "worship"
+  },
+  {
+    "english": ["family", "father", "mother", "son", "sons", "children", "offspring", "wife", "wives", "parents", "kin", "relatives", "orphan", "orphans"],
+    "arabic": ["أب", "أم", "ابن", "أبناء", "بنون", "بنين", "ذرية", "أهل", "زوج", "زوجة", "أزواج", "والد", "والدة", "والدان", "قربى", "يتيم", "يتامى", "ولد", "أولاد"],
+    "category": "family"
+  },
+  {
+    "english": ["food", "drink", "water", "eat", "eating", "meat", "bread", "honey", "milk", "fruit", "fruits", "sustenance"],
+    "arabic": ["طعام", "شراب", "ماء", "أكل", "خبز", "لحم", "عسل", "لبن", "فاكهة", "فواكه", "ثمار", "ثمرات", "رزق", "سقاء", "ظمأ"],
+    "category": "sustenance"
+  },
+  {
+    "english": ["light", "darkness", "day", "night", "sun", "moon", "stars", "morning", "evening", "dawn", "celestial"],
+    "arabic": ["نور", "ظلمة", "ظلمات", "ليل", "نهار", "شمس", "قمر", "نجوم", "نجم", "كواكب", "كوكب", "مصباح", "صباح", "مساء", "فجر", "ضحى", "عشاء"],
+    "category": "celestial"
+  }
+]
