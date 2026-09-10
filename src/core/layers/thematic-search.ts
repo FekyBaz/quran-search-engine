@@ -140,6 +140,46 @@ const verifyIndexedVerse = <TVerse extends VerseInput>(
   return matchedKeywords.length > 0 ? toThematicHit(verse, matchType, matchedKeywords) : null;
 };
 
+const collectDirectKeywords = (normalizedVerse: string, directTokens: string[]): string[] => {
+  const matched: string[] = [];
+  for (const keyword of directTokens) {
+    if (verseContains(normalizedVerse, keyword)) {
+      matched.push(keyword);
+    }
+  }
+  return matched;
+};
+
+const collectEnglishKeywords = (
+  normalizedVerse: string,
+  englishWords: string[],
+  source: ThematicSource,
+): string[] => {
+  const matched: string[] = [];
+  for (const engWord of englishWords) {
+    for (const themeWord of source.expandEnglish(engWord) ?? []) {
+      if (verseContains(normalizedVerse, themeWord)) {
+        matched.push(themeWord);
+      }
+    }
+  }
+  return matched;
+};
+
+const collectThemeKeywords = (
+  normalizedVerse: string,
+  arabicWords: Set<string>,
+  directTokens: string[],
+): string[] => {
+  const matched: string[] = [];
+  for (const themeWord of arabicWords) {
+    if (!directTokens.includes(themeWord) && verseContains(normalizedVerse, themeWord)) {
+      matched.push(themeWord);
+    }
+  }
+  return matched;
+};
+
 /** Collects every theme keyword a verse contains (linear scan, no index). */
 const collectScanKeywords = <TVerse extends VerseInput>(
   verse: TVerse,
@@ -147,26 +187,11 @@ const collectScanKeywords = <TVerse extends VerseInput>(
   source: ThematicSource,
 ): string[] => {
   const normalizedVerse = normalizeArabic(verse.standard);
-  const matchedKeywords: string[] = [];
-
-  for (const keyword of resolved.directTokens) {
-    if (verseContains(normalizedVerse, keyword)) {
-      matchedKeywords.push(keyword);
-    }
-  }
-  for (const engWord of resolved.englishWords) {
-    for (const themeWord of source.expandEnglish(engWord) ?? []) {
-      if (verseContains(normalizedVerse, themeWord)) {
-        matchedKeywords.push(themeWord);
-      }
-    }
-  }
-  for (const themeWord of resolved.arabicWords) {
-    if (!resolved.directTokens.includes(themeWord) && verseContains(normalizedVerse, themeWord)) {
-      matchedKeywords.push(themeWord);
-    }
-  }
-  return matchedKeywords;
+  return [
+    ...collectDirectKeywords(normalizedVerse, resolved.directTokens),
+    ...collectEnglishKeywords(normalizedVerse, resolved.englishWords, source),
+    ...collectThemeKeywords(normalizedVerse, resolved.arabicWords, resolved.directTokens),
+  ];
 };
 
 /** Scores one verse by linear scan (no usable index). */
