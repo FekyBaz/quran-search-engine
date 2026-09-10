@@ -105,6 +105,23 @@ export function search<TVerse extends VerseInput>(
     throw new MissingDependenciesError(['wordMap']);
   }
 
+  // 0. Scope the corpus to the requested sura/juz before any search layer runs.
+  // Previously only the regex branch honoured these filters, so the selected
+  // sura filter was silently ignored on the normal text path (refs #94).
+  // Scoping the input (rather than post-filtering results) keeps the reported
+  // totals and page counts correct.
+  const hasScopeFilter =
+    typeof options.suraId === 'number' ||
+    options.juzId !== undefined ||
+    (typeof options.suraName === 'string' && options.suraName.trim() !== '');
+  let scopedData = quranData;
+  if (hasScopeFilter) {
+    scopedData = new Map<number, TVerse>();
+    for (const verse of filterVerses(quranData, options.suraId, options.juzId, options.suraName)) {
+      scopedData.set(verse.gid, verse);
+    }
+  }
+
   // Validate pagination parameters
   const page = pagination.page ?? 1;
   const limit = pagination.limit ?? 20;
@@ -125,7 +142,7 @@ export function search<TVerse extends VerseInput>(
   // 1. Range query shortcut
   const parsedRange = parseRangeQuery(query);
   if (parsedRange) {
-    const quranDataArray = Array.from(quranData.values());
+    const quranDataArray = Array.from(scopedData.values());
     const rangeMatches = filterVersesByRange(quranDataArray, parsedRange);
     const totalResults = rangeMatches.length;
     const totalPages = Math.ceil(totalResults / limit);
@@ -159,7 +176,7 @@ export function search<TVerse extends VerseInput>(
   // 2. Regex query shortcut
   if (options.isRegex) {
     const compiledRegex = validateRegex(query); // throws InvalidRegexError on bad input
-    const filtered = filterVerses(quranData, options.suraId, options.juzId, options.suraName);
+    const filtered = filterVerses(scopedData, options.suraId, options.juzId, options.suraName);
     const regexMatches = performRegexSearch(compiledRegex, filtered);
     const totalResults = regexMatches.length;
     const totalPages = Math.ceil(totalResults / limit);
@@ -253,19 +270,19 @@ export function search<TVerse extends VerseInput>(
   }
 
   const fuseInstance = fuzzyEnabled
-    ? fuseIndex || createArabicFuseSearch(Array.from(quranData.values()), ['standard', 'uthmani'])
+    ? fuseIndex || createArabicFuseSearch(Array.from(scopedData.values()), ['standard', 'uthmani'])
     : null;
 
   // 5. Executing Search Layers
   // Use OR logic for boolean queries to get union of all terms, then filter with boolean logic
   // Use AND logic for normal queries to get intersection (phrase matching)
   const simpleMatches = booleanQuery
-    ? simpleSearchOr(quranData, cleanQuery, 'standard', invertedIndex?.wordIndex)
-    : simpleSearch(quranData, cleanQuery, 'standard', invertedIndex?.wordIndex);
+    ? simpleSearchOr(scopedData, cleanQuery, 'standard', invertedIndex?.wordIndex)
+    : simpleSearch(scopedData, cleanQuery, 'standard', invertedIndex?.wordIndex);
 
   const advancedMatches = performAdvancedLinguisticSearch(
     cleanQuery,
-    quranData,
+    scopedData,
     options,
     fuseInstance,
     wordMap,
@@ -276,7 +293,7 @@ export function search<TVerse extends VerseInput>(
 
   const semanticMatches = performSemanticSearch(
     cleanQuery,
-    quranData,
+    scopedData,
     options,
     semanticMap,
     operatorFreeQuery,
